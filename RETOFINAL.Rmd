@@ -1,0 +1,180 @@
+---
+title: "Reto"
+output: html_notebook
+---
+
+El primer paso es cargar la base de datos en RStudio
+
+```{r}
+datos <- read.csv("~/Carrera/Estadística y probabilidad/datos-covid-red1.csv", header = TRUE)
+cols <- colnames(datos); cols
+```
+
+Seleccionamos las columnas que consideremos representativas para nuestro análisis
+
+```{r}
+seleccionCols <- c(6,15,17,18,22:33)
+seleccionNombres <- colnames(datos)[seleccionCols]
+df <- data.frame("Posiciones"=seleccionCols,"Variables"=seleccionNombres); df
+```
+
+Primero, queremos obtener el número total de casos positivos de covid registrados en la base de datos 
+
+```{r}
+totalCasos <- sum(datos$RESULTADO == "Positivo SARS-CoV-2"); totalCasos
+```
+
+Ahora, queremos ver la distribución que tienen los contagios por edades
+
+```{r}
+# Creamos un data frame que contenga todos los registros que dieron positivo en la prueba de covid con su edad correspondiente
+# Como hay registros de mAs de 100 aNos, limitaremos a personas menores a 100 aNos de edad
+
+casosEdades <- datos[(datos$EDAD < 100) & (datos$RESULTADO == "Positivo SARS-CoV-2"), c(18,33)]
+
+hist(casosEdades$EDAD,
+     xlab='Edad',
+     ylab='Frecuencia de contagios',
+     main='Histograma casos positivos de Covid por edad',
+     col='purple')
+
+
+
+```
+
+```{r}
+muertesEdades <- na.omit(datos[(datos$EDAD < 100) & (datos$RESULTADO == "Positivo SARS-CoV-2"), c(15,18,33)])
+
+hist(muertesEdades$EDAD,
+     xlab='Edad',
+     ylab='Frecuencia de defunción',
+     main='Histograma de defunciones por edad',
+     col='orange')
+```
+
+Ahora, analizaremos los porcentajes de contagios por sexo 
+
+```{r}
+casosHombres <- sum((datos$RESULTADO == "Positivo SARS-CoV-2") & (datos$SEXO == "HOMBRE"))
+casosMujeres <- sum((datos$RESULTADO == "Positivo SARS-CoV-2") & (datos$SEXO == "MUJER"))
+
+pH <- casosHombres/totalCasos; pH*100
+pM <- casosMujeres/totalCasos; pM*100
+
+
+vector <- c(pH, pM)
+
+pie(vector, labels = c("Hombres", "Mujeres"))
+```
+
+Ahora, queremos identificar en general, el porcentaje de personas contagiadas que fallece. 
+Para esto necesitaremos un intervalo de confianza del 95%
+Realizaremos un intervalo de confianza del 95%
+
+Primero, calculamos una aproximación al porcentaje de muertes por Covid
+
+```{r}
+fallecidosCCovid <- na.omit(datos[datos$RESULTADO == "Positivo SARS-CoV-2" , c(15,33)])
+nrow(fallecidosCCovid)
+```
+
+Ahora calculamos la proporcion aproximada
+
+```{r}
+PGORRO <- nrow(fallecidosCCovid)/totalCasos; PGORRO
+```
+Como es una poblacion grande, nuesto estadistico de prueba se parece a una distribucion normal estandar
+Calculamos la z con un alpha igual a 0.05
+
+```{r}
+zAlpha <- qnorm(1-0.025); zAlpha
+```
+
+Calculamos el intervalo de confianza
+
+```{r}
+PGORRO - zAlpha*sqrt((PGORRO*(1-PGORRO))/totalCasos)
+PGORRO + zAlpha*sqrt((PGORRO*(1-PGORRO))/totalCasos)
+```
+
+Podemos decir con una confianza del 95% que la proporción de fallecimientos sobre los casos positivos se encuentra entre 12.2% y 12.4%
+
+
+En esta secciOn el anAlisis se basarA en las personas que tienen asma
+Realizaremos una prueba de hipotesis de proporciOn con dos poblaciones; la que tiene asma y la que no 
+Filtraremos tambien todas las otras comorbilidades para tener un analisis mas preciso 
+
+```{r}
+dfAsma <- datos[((datos$RESULTADO == "Positivo SARS-CoV-2") & ((datos$ASMA == "SI") | (datos$ASMA == "NO")) & (datos$NEUMONIA == "NO") & (datos$DIABETES == "NO") & (datos$EPOC == "NO") & (datos$INMUSUPR == "NO") & (datos$HIPERTENSION == "NO") & (datos$OTRA_COM == "NO") & (datos$CARDIOVASCULAR == "NO") & (datos$OBESIDAD == "NO") & (datos$RENAL_CRONICA == "NO") & (datos$TABAQUISMO == "NO") & (datos$OTRO_CASO == "NO") ), c(15,24)]; dfAsma
+```
+
+
+```{r}
+x1 <- nrow(na.omit(dfAsma[dfAsma$ASMA == "SI", c(1,2)])); x1
+x2 <- nrow(na.omit(dfAsma[dfAsma$ASMA == "NO", c(1,2)])); x2
+n1 <- nrow(dfAsma[dfAsma$ASMA == "SI", c(1,2)]); n1
+n2 <- nrow(dfAsma[dfAsma$ASMA == "NO", c(1,2)]); n2
+```
+
+```{r}
+pGorro1 <- x1/n1; pGorro1*100
+pGorro2 <- x2/n2; pGorro2*100
+```
+
+```{r}
+pGorro <- (x1+x2)/(n1+n2); pGorro
+```
+
+```{r}
+zCalc <- (pGorro1-pGorro2)/(sqrt((pGorro*(1-pGorro))*((1/n1)+(1/n2)))); zCalc
+```
+
+```{r}
+z <- qnorm(1-0.05); z
+```
+Como la z calculada es menor a la z de alpha, concluimos que no hay suficiente evidencia para rechazar Ho
+
+
+Ahora, solo casos de defunciones
+
+```{r}
+auxAsma <- na.omit(datos[((datos$RESULTADO == "Positivo SARS-CoV-2") & ((datos$ASMA == "SI") | (datos$ASMA == "NO")) & (datos$NEUMONIA == "NO") & (datos$DIABETES == "NO") & (datos$EPOC == "NO") & (datos$INMUSUPR == "NO") & (datos$HIPERTENSION == "NO") & (datos$OTRA_COM == "NO") & (datos$CARDIOVASCULAR == "NO") & (datos$OBESIDAD == "NO") & (datos$RENAL_CRONICA == "NO") & (datos$TABAQUISMO == "NO") & (datos$OTRO_CASO == "NO") ), c(15,24)]); auxAsma
+```
+
+```{r}
+noAsma <- auxAsma[auxAsma$ASMA == "NO", c(1)]
+
+hist(noAsma,
+     xlab='Días',
+     ylab='Frecuencia de días',
+     main='Histograma dias de sintomas a defunción en población sin asma',
+     col='red')
+
+mean(auxAsma[auxAsma$ASMA == "NO", c(1)])
+```
+
+```{r}
+siAsma <- auxAsma[auxAsma$ASMA == "SI", c(1)]
+
+hist(siAsma,
+     xlab='Días',
+     ylab='Frecuencia de días',
+     main='Histograma dias de sintomas a defunción en población con asma',
+     col='red')
+
+mean(auxAsma[auxAsma$ASMA == "SI", c(1)])
+```
+
+No contamos con suficiente información para poder llegar a alguna conclución precisa 
+
+
+
+
+
+
+
+
+
+
+
+
