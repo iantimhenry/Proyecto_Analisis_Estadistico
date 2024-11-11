@@ -1,3 +1,3 @@
-# AnalisisCOVID
+# Analisis de Datos - COVID 19
 
-Proyecto de estadística con R Studio
+Proyecto de la materia de modelación estadística hecho en R Studio
